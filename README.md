@@ -48,7 +48,7 @@ Mở file `frontend/index.html` trong browser hoặc dùng Live Server.
 
 ## 👨‍💻 Tác giả
 
-Tạo bởi [Your Name]
+Tạo bởi [Doan Viet Huy AT141]
 
 ## 📝 License
 
