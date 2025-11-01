@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tech Blog</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 0;
+            margin-bottom: 40px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            text-align: center;
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 1.2em;
+            color: #667eea;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #c33;
+        }
+
+        .blog-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .blog-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer;
+        }
+
+        .blog-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        }
+
+        .blog-image {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .blog-content {
+            padding: 20px;
+        }
+
+        .blog-title {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+
+        .blog-meta {
+            display: flex;
+            justify-content: space-between;
+            color: #7f8c8d;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+        }
+
+        .blog-excerpt {
+            color: #555;
+            margin-bottom: 15px;
+        }
+
+        .blog-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .tag {
+            background: #e8eaf6;
+            color: #667eea;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 500;
+        }
+
+        .blog-detail {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: none;
+        }
+
+        .blog-detail.active {
+            display: block;
+        }
+
+        .back-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-bottom: 20px;
+            transition: background 0.3s ease;
+        }
+
+        .back-button:hover {
+            background: #5568d3;
+        }
+
+        .detail-image {
+            width: 100%;
+            max-height: 400px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .detail-content {
+            font-size: 1.1em;
+            line-height: 1.8;
+            color: #444;
+            margin: 20px 0;
+        }
+
+        .api-status {
+            text-align: center;
+            padding: 10px;
+            background: #e8f5e9;
+            color: #2e7d32;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 0.9em;
+        }
+
+        .api-status.error {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        @media (max-width: 768px) {
+            .blog-grid {
+                grid-template-columns: 1fr;
+            }
+
+            h1 {
+                font-size: 2em;
+            }
+
+            .blog-detail {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>🚀 Tech Blog</h1>
+            <p class="subtitle">Powered by Node.js + Express API</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <div id="apiStatus" class="api-status"></div>
+        <div id="blogList"></div>
+        <div id="blogDetail" class="blog-detail"></div>
+    </div>
+
+    <script>
+        // Cấu hình API URL - Tự động detect localhost hoặc production
+        const API_URL = window.location.hostname === 'localhost' 
+            ? 'http://localhost:8080/api'
+            : `${window.location.protocol}//${window.location.hostname}/api`;
+        
+        let currentView = 'list';
+
+        // Kiểm tra kết nối API
+        async function checkAPI() {
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                const data = await response.json();
+                document.getElementById('apiStatus').textContent = 
+                    `✓ API Connected: ${data.message}`;
+                document.getElementById('apiStatus').className = 'api-status';
+            } catch (error) {
+                document.getElementById('apiStatus').textContent = 
+                    `✗ API Error: Cannot connect to backend at ${API_URL}`;
+                document.getElementById('apiStatus').className = 'api-status error';
+            }
+        }
+
+        // Fetch danh sách blog từ API
+        async function fetchBlogs() {
+            const blogListEl = document.getElementById('blogList');
+            blogListEl.innerHTML = '<div class="loading">⏳ Loading blogs...</div>';
+
+            try {
+                const response = await fetch(`${API_URL}/blogs`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    displayBlogs(result.data);
+                } else {
+                    throw new Error('Failed to fetch blogs');
+                }
+            } catch (error) {
+                blogListEl.innerHTML = `
+                    <div class="error">
+                        <strong>Error loading blogs:</strong> ${error.message}
+                        <br><br>
+                        Make sure the backend server is running on port 8080.
+                    </div>
+                `;
+            }
+        }
+
+        // Hiển thị danh sách blog
+        function displayBlogs(blogs) {
+            const blogListEl = document.getElementById('blogList');
+            
+            if (blogs.length === 0) {
+                blogListEl.innerHTML = '<p>No blogs found.</p>';
+                return;
+            }
+
+            blogListEl.innerHTML = `
+                <div class="blog-grid">
+                    ${blogs.map(blog => `
+                        <div class="blog-card" onclick="viewBlogDetail('${blog.slug}')">
+                            <img src="${blog.imageUrl}" alt="${blog.title}" class="blog-image" 
+                                 onerror="this.src='https://via.placeholder.com/800x400/667eea/ffffff?text=Blog+Image'">
+                            <div class="blog-content">
+                                <h2 class="blog-title">${blog.title}</h2>
+                                <div class="blog-meta">
+                                    <span>👤 ${blog.author}</span>
+                                    <span>📅 ${new Date(blog.date).toLocaleDateString('vi-VN')}</span>
+                                </div>
+                                <p class="blog-excerpt">${blog.excerpt}</p>
+                                <div class="blog-tags">
+                                    ${blog.tags.map(tag => `<span class="tag">#${tag}</span>`).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        // Fetch chi tiết blog từ API
+        async function viewBlogDetail(identifier) {
+            const blogDetailEl = document.getElementById('blogDetail');
+            blogDetailEl.innerHTML = '<div class="loading">⏳ Loading blog details...</div>';
+            blogDetailEl.classList.add('active');
+            document.getElementById('blogList').style.display = 'none';
+            currentView = 'detail';
+
+            try {
+                const response = await fetch(`${API_URL}/blogs/${identifier}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    displayBlogDetail(result.data);
+                } else {
+                    throw new Error('Blog not found');
+                }
+            } catch (error) {
+                blogDetailEl.innerHTML = `
+                    <button class="back-button" onclick="backToList()">← Back to List</button>
+                    <div class="error">
+                        <strong>Error loading blog:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Hiển thị chi tiết blog
+        function displayBlogDetail(blog) {
+            const blogDetailEl = document.getElementById('blogDetail');
+            
+            blogDetailEl.innerHTML = `
+                <button class="back-button" onclick="backToList()">← Back to List</button>
+                <h1 class="blog-title">${blog.title}</h1>
+                <div class="blog-meta">
+                    <span>👤 ${blog.author}</span>
+                    <span>📅 ${new Date(blog.date).toLocaleDateString('vi-VN')}</span>
+                </div>
+                <div class="blog-tags">
+                    ${blog.tags.map(tag => `<span class="tag">#${tag}</span>`).join('')}
+                </div>
+                <img src="${blog.imageUrl}" alt="${blog.title}" class="detail-image"
+                     onerror="this.src='https://via.placeholder.com/1200x400/667eea/ffffff?text=Blog+Image'">
+                <div class="detail-content">
+                    ${blog.content.split('\n\n').map(p => `<p>${p}</p>`).join('')}
+                </div>
+            `;
+        }
+
+        // Quay lại danh sách
+        function backToList() {
+            document.getElementById('blogDetail').classList.remove('active');
+            document.getElementById('blogList').style.display = 'block';
+            currentView = 'list';
+        }
+
+        // Khởi động app
+        async function init() {
+            await checkAPI();
+            await fetchBlogs();
+        }
+
+        // Chạy khi trang load
+        init();
+    </script>
+</body>
+</html>
